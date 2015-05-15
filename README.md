@@ -13,17 +13,18 @@ The source code used in this demo can be found at https://github.com/linanqiu/wo
 
 We use `gensim`, since `gensim` has a much more readable implementation of Word2Vec (and Doc2Vec). Bless those guys. We also use `numpy` for general array manipulation, and `sklearn` for Logistic Regression classifier.
 
+```python
+# gensim modules
+from gensim import utils
+from gensim.models.doc2vec import LabeledSentence
+from gensim.models import Doc2Vec
 
-    # gensim modules
-    from gensim import utils
-    from gensim.models.doc2vec import LabeledSentence
-    from gensim.models import Doc2Vec
-    
-    # numpy
-    import numpy
-    
-    # classifier
-    from sklearn.linear_model import LogisticRegression
+# numpy
+import numpy
+
+# classifier
+from sklearn.linear_model import LogisticRegression
+```
 
 ### Input Format
 
@@ -66,45 +67,47 @@ However, we need a way to convert our new line separated corpus into a collectio
 
 So we write our own `LabeledLineSentence` class. The constructor takes in a dictionary that defines the files to read and the label prefixes sentences from that document should take on. Then, Doc2Vec can either read the collection directly via the iterator, or we can access the array directly. We also need a function to return a permutated version of the array of `LabeledSentence`s. We'll see why later on.
 
-
-    class LabeledLineSentence(object):
-        def __init__(self, sources):
-            self.sources = sources
-            
-            flipped = {}
-            
-            # make sure that keys are unique
-            for key, value in sources.items():
-                if value not in flipped:
-                    flipped[value] = [key]
-                else:
-                    raise Exception('Non-unique prefix encountered')
+```python
+class LabeledLineSentence(object):
+    def __init__(self, sources):
+        self.sources = sources
         
-        def __iter__(self):
-            for source, prefix in self.sources.items():
-                with utils.smart_open(source) as fin:
-                    for item_no, line in enumerate(fin):
-                        yield LabeledSentence(utils.to_unicode(line).split(), [prefix + '_%s' % item_no])
+        flipped = {}
         
-        def to_array(self):
-            self.sentences = []
-            for source, prefix in self.sources.items():
-                with utils.smart_open(source) as fin:
-                    for item_no, line in enumerate(fin):
-                        self.sentences.append(LabeledSentence(utils.to_unicode(line).split(), [prefix + '_%s' % item_no]))
-            return self.sentences
-        
-        def sentences_perm(self):
-            return numpy.random.permutation(self.sentences)
+        # make sure that keys are unique
+        for key, value in sources.items():
+            if value not in flipped:
+                flipped[value] = [key]
+            else:
+                raise Exception('Non-unique prefix encountered')
+    
+    def __iter__(self):
+        for source, prefix in self.sources.items():
+            with utils.smart_open(source) as fin:
+                for item_no, line in enumerate(fin):
+                    yield LabeledSentence(utils.to_unicode(line).split(), [prefix + '_%s' % item_no])
+    
+    def to_array(self):
+        self.sentences = []
+        for source, prefix in self.sources.items():
+            with utils.smart_open(source) as fin:
+                for item_no, line in enumerate(fin):
+                    self.sentences.append(LabeledSentence(utils.to_unicode(line).split(), [prefix + '_%s' % item_no]))
+        return self.sentences
+    
+    def sentences_perm(self):
+        return numpy.random.permutation(self.sentences)
+```
 
 Now we can feed the data files to `LabeledLineSentence`. As we mentioned earlier, `LabeledLineSentence` simply takes a dictionary with keys as the file names and values the special prefixes for sentences from that document. The prefixes need to be unique, so that there is no ambiguitiy for sentences from different documents.
 
 The prefixes will have a counter appended to them to label individual sentences in the documetns.
 
+```python
+sources = {'test-neg.txt':'TEST_NEG', 'test-pos.txt':'TEST_POS', 'train-neg.txt':'TRAIN_NEG', 'train-pos.txt':'TRAIN_POS', 'train-unsup.txt':'TRAIN_UNS'}
 
-    sources = {'test-neg.txt':'TEST_NEG', 'test-pos.txt':'TEST_POS', 'train-neg.txt':'TRAIN_NEG', 'train-pos.txt':'TRAIN_POS', 'train-unsup.txt':'TRAIN_UNS'}
-    
-    sentences = LabeledLineSentence(sources)
+sentences = LabeledLineSentence(sources)
+```
 
 ## Model
 
@@ -120,10 +123,11 @@ If you're curious about the parameters, do read the Word2Vec documentation. Othe
 - `sample`: threshold for configuring which higher-frequency words are randomly downsampled
 - `workers`: use this many worker threads to train the model 
 
+```python
+model = Doc2Vec(min_count=1, window=10, size=100, sample=1e-4, negative=5, workers=7)
 
-    model = Doc2Vec(min_count=1, window=10, size=100, sample=1e-4, negative=5, workers=7)
-    
-    model.build_vocab(sentences.to_array())
+model.build_vocab(sentences.to_array())
+```
 
 ### Training Doc2Vec
 
@@ -133,77 +137,74 @@ We train it for 10 epochs. If I had more time, I'd have done 20.
 
 This process takes around 10 mins, so go grab some coffee.
 
-
-    for epoch in range(10):
-        model.train(sentences.sentences_perm())
+```python
+for epoch in range(10):
+    model.train(sentences.sentences_perm())
+```
 
 ### Inspecting the Model
 
 Let's see what our model gives. It seems that it has kind of understood the word `good`, since the most similar words to good are `glamorous`, `spectacular`, `astounding` etc. This is really awesome (and important), since we are doing sentiment analysis.
 
+```python
+model.most_similar('good')
 
-    model.most_similar('good')
-
-
-
-
-    [(u'tekashi', 0.45127424597740173),
-     (u'glamorous', 0.4344240427017212),
-     (u'spectacular', 0.42718690633773804),
-     (u'astounding', 0.42001062631607056),
-     (u'valentinov', 0.41705751419067383),
-     (u'sweetest', 0.4043062925338745),
-     (u'complementary', 0.4039931297302246),
-     (u'boyyyyy', 0.39713743329048157),
-     (u'macdonaldsland', 0.3965899348258972),
-     (u'elven', 0.39042729139328003)]
-
+[(u'tekashi', 0.45127424597740173),
+ (u'glamorous', 0.4344240427017212),
+ (u'spectacular', 0.42718690633773804),
+ (u'astounding', 0.42001062631607056),
+ (u'valentinov', 0.41705751419067383),
+ (u'sweetest', 0.4043062925338745),
+ (u'complementary', 0.4039931297302246),
+ (u'boyyyyy', 0.39713743329048157),
+ (u'macdonaldsland', 0.3965899348258972),
+ (u'elven', 0.39042729139328003)]
+```
 
 
 We can also prop the hood open and see what the model actually contains. This is each of the vectors of the words and sentences in the model. We can access all of them using `model.syn0` (for the geekier ones among you, `syn0` is simply the output layer of the shallow neural network). However, we don't want to use the entire `syn0` since that contains the vectors for the words as well, but we are only interested in the ones for sentences.
 
 Here's a sample vector for the first sentence in the training set for negative reviews:
 
+```python
+model['TRAIN_NEG_0']
 
-    model['TRAIN_NEG_0']
-
-
-
-
-    array([ 0.45238438, -0.07346677, -0.17444436,  0.60655016, -0.70522565,
-            0.28476399,  0.24404588,  0.09271102, -0.02715847, -0.13526627,
-           -0.12390804, -0.00219905,  0.011253  ,  0.24557671, -0.09958933,
-            0.17554867,  0.16079453, -0.18499082, -0.31598854,  0.01447532,
-            0.52194822, -0.2387463 ,  0.16799606,  0.47053325,  0.09696233,
-           -0.2582404 , -0.19224562, -0.07114315, -0.25864932, -0.5387702 ,
-            0.01053433,  0.43367237,  0.07885301,  0.04634216,  0.0899957 ,
-            0.06260718, -0.38053334,  0.18118465,  0.14301547,  0.18286002,
-           -0.31105465,  0.2040111 , -0.76622951,  0.06977512,  0.11759907,
-           -0.11566088, -0.00373716, -0.14705311, -0.29019266, -0.04825564,
-            0.20127594, -0.0258627 , -0.20973501,  0.48925173, -0.31426486,
-            0.3180953 ,  0.41300809, -0.29024398, -0.21187432,  0.10730035,
-            0.30392009, -0.2130826 ,  0.47062019, -0.17570473,  0.21256927,
-            0.51417089, -0.00951673,  0.1525774 ,  0.05895659,  0.33289343,
-            0.56261861, -0.05355176, -0.05011608,  0.24092411, -0.17943399,
-           -0.26373053,  0.22000515,  0.05890461, -0.24378468,  0.58705276,
-            0.01776701,  0.04332061, -0.04941204,  0.24699709, -0.28202724,
-           -0.27278683,  0.2515423 ,  0.12944862, -0.29060578, -0.02939321,
-            0.42860341, -0.27076352, -0.56153166,  0.35900518, -0.11538842,
-           -0.29707447,  0.15181458,  0.73098952,  0.308236  ,  0.52810729], dtype=float32)
-
+array([ 0.45238438, -0.07346677, -0.17444436,  0.60655016, -0.70522565,
+        0.28476399,  0.24404588,  0.09271102, -0.02715847, -0.13526627,
+       -0.12390804, -0.00219905,  0.011253  ,  0.24557671, -0.09958933,
+        0.17554867,  0.16079453, -0.18499082, -0.31598854,  0.01447532,
+        0.52194822, -0.2387463 ,  0.16799606,  0.47053325,  0.09696233,
+       -0.2582404 , -0.19224562, -0.07114315, -0.25864932, -0.5387702 ,
+        0.01053433,  0.43367237,  0.07885301,  0.04634216,  0.0899957 ,
+        0.06260718, -0.38053334,  0.18118465,  0.14301547,  0.18286002,
+       -0.31105465,  0.2040111 , -0.76622951,  0.06977512,  0.11759907,
+       -0.11566088, -0.00373716, -0.14705311, -0.29019266, -0.04825564,
+        0.20127594, -0.0258627 , -0.20973501,  0.48925173, -0.31426486,
+        0.3180953 ,  0.41300809, -0.29024398, -0.21187432,  0.10730035,
+        0.30392009, -0.2130826 ,  0.47062019, -0.17570473,  0.21256927,
+        0.51417089, -0.00951673,  0.1525774 ,  0.05895659,  0.33289343,
+        0.56261861, -0.05355176, -0.05011608,  0.24092411, -0.17943399,
+       -0.26373053,  0.22000515,  0.05890461, -0.24378468,  0.58705276,
+        0.01776701,  0.04332061, -0.04941204,  0.24699709, -0.28202724,
+       -0.27278683,  0.2515423 ,  0.12944862, -0.29060578, -0.02939321,
+        0.42860341, -0.27076352, -0.56153166,  0.35900518, -0.11538842,
+       -0.29707447,  0.15181458,  0.73098952,  0.308236  ,  0.52810729], dtype=float32)
+```
 
 
 ### Saving and Loading Models
 
 To avoid training the model again, we can save it.
 
-
-    model.save('./imdb.d2v')
+```python
+model.save('./imdb.d2v')
+```
 
 And load it.
 
-
-    model = Doc2Vec.load('./imdb.d2v')
+```python
+model = Doc2Vec.load('./imdb.d2v')
+```
 
 ## Classifying Sentiments
 
@@ -215,88 +216,83 @@ Hence, we create a `numpy` array (since the classifier we use only takes numpy a
 
 We simply put the positive ones at the first half of the array, and the negative ones at the second half.
 
+```python
+train_arrays = numpy.zeros((25000, 100))
+train_labels = numpy.zeros(25000)
 
-    train_arrays = numpy.zeros((25000, 100))
-    train_labels = numpy.zeros(25000)
-    
-    for i in range(12500):
-        prefix_train_pos = 'TRAIN_POS_' + str(i)
-        prefix_train_neg = 'TRAIN_NEG_' + str(i)
-        train_arrays[i] = model[prefix_train_pos]
-        train_arrays[12500 + i] = model[prefix_train_neg]
-        train_labels[i] = 1
-        train_labels[12500 + i] = 0
+for i in range(12500):
+    prefix_train_pos = 'TRAIN_POS_' + str(i)
+    prefix_train_neg = 'TRAIN_NEG_' + str(i)
+    train_arrays[i] = model[prefix_train_pos]
+    train_arrays[12500 + i] = model[prefix_train_neg]
+    train_labels[i] = 1
+    train_labels[12500 + i] = 0
+```
 
 The training array looks like this: rows and rows of vectors representing each sentence.
 
+```python
+print train_arrays
 
-    print train_arrays
-
-    [[ 0.42028627 -0.0910796  -0.10316094 ..., -0.11574443  0.54547763
-      -0.1086079 ]
-     [ 0.21860494  0.34468749 -0.06821636 ..., -0.02118306  0.39692196
-       0.518085  ]
-     [ 0.19905667 -0.05517581  0.0789782  ...,  0.78548694  0.10369277
-       0.15604787]
-     ..., 
-     [ 0.42894334 -0.03023763 -0.38231012 ...,  0.17735066  0.36474037
-      -0.08756389]
-     [ 0.65340477  0.388024   -0.34454256 ...,  0.0466847   0.61409295
-       0.19534792]
-     [ 0.40329584  0.26531416 -0.11242788 ...,  0.08738184  0.48685795
-      -0.17476116]]
-
+[[ 0.42028627 -0.0910796  -0.10316094 ..., -0.11574443  0.54547763
+  -0.1086079 ]
+ [ 0.21860494  0.34468749 -0.06821636 ..., -0.02118306  0.39692196
+   0.518085  ]
+ [ 0.19905667 -0.05517581  0.0789782  ...,  0.78548694  0.10369277
+   0.15604787]
+ ..., 
+ [ 0.42894334 -0.03023763 -0.38231012 ...,  0.17735066  0.36474037
+  -0.08756389]
+ [ 0.65340477  0.388024   -0.34454256 ...,  0.0466847   0.61409295
+   0.19534792]
+ [ 0.40329584  0.26531416 -0.11242788 ...,  0.08738184  0.48685795
+  -0.17476116]]
+```
 
 The labels are simply category labels for the sentence vectors -- 1 representing positive and 0 for negative.
 
+```python
+print train_labels
 
-    print train_labels
-
-    [ 1.  1.  1. ...,  0.  0.  0.]
-
+[ 1.  1.  1. ...,  0.  0.  0.]
+```
 
 ### Testing Vectors
 
 We do the same for testing data -- data that we are going to feed to the classifier after we've trained it using the training data. This allows us to evaluate our results. The process is pretty much the same as extracting the results for the training data.
 
+```python
+test_arrays = numpy.zeros((25000, 100))
+test_labels = numpy.zeros(25000)
 
-    test_arrays = numpy.zeros((25000, 100))
-    test_labels = numpy.zeros(25000)
-    
-    for i in range(12500):
-        prefix_test_pos = 'TEST_POS_' + str(i)
-        prefix_test_neg = 'TEST_NEG_' + str(i)
-        test_arrays[i] = model[prefix_test_pos]
-        test_arrays[12500 + i] = model[prefix_test_neg]
-        test_labels[i] = 1
-        test_labels[12500 + i] = 0
+for i in range(12500):
+    prefix_test_pos = 'TEST_POS_' + str(i)
+    prefix_test_neg = 'TEST_NEG_' + str(i)
+    test_arrays[i] = model[prefix_test_pos]
+    test_arrays[12500 + i] = model[prefix_test_neg]
+    test_labels[i] = 1
+    test_labels[12500 + i] = 0
+```
 
 ### Classification
 
 Now we train a logistic regression classifier using the training data.
 
+```python
+classifier = LogisticRegression()
+classifier.fit(train_arrays, train_labels)
 
-    classifier = LogisticRegression()
-    classifier.fit(train_arrays, train_labels)
-
-
-
-
-    LogisticRegression(C=1.0, class_weight=None, dual=False, fit_intercept=True,
-              intercept_scaling=1, penalty='l2', random_state=None, tol=0.0001)
-
-
+LogisticRegression(C=1.0, class_weight=None, dual=False, fit_intercept=True,
+          intercept_scaling=1, penalty='l2', random_state=None, tol=0.0001)
+```
 
 And find that we have achieved near 87% accuracy for sentiment analysis. This is rather incredible, given that we are only using a linear SVM and a very shallow neural network.
 
+```
+classifier.score(test_arrays, test_labels)
 
-    classifier.score(test_arrays, test_labels)
-
-
-
-
-    0.86968000000000001
-
+0.86968000000000001
+```
 
 
 Isn't this fantastic? Hope I saved you some time!
