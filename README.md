@@ -5,6 +5,8 @@ Word2Vec is dope. In short, it takes in a corpus, and churns out vectors for eac
 
 However, Word2Vec documentation is shit. The C-code is nigh unreadable (700 lines of highly optimized, and sometimes weirdly optimized code). I personally spent a lot of time untangling Doc2Vec and crashing into ~50% accuracies due to implementation mistakes. This tutorial aims to help other users get off the ground using Word2Vec for their own research. We use Word2Vec for **sentiment analysis** by attempting to classify the Cornell IMDB movie review corpus (http://www.cs.cornell.edu/people/pabo/movie-review-data/).
 
+The source code used in this demo can be found at https://github.com/linanqiu/word2vec-sentiments
+
 ## Setup
 
 ### Modules
