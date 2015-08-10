@@ -24,6 +24,9 @@ import numpy
 
 # classifier
 from sklearn.linear_model import LogisticRegression
+
+# utils
+import random
 ```
 
 ### Input Format
@@ -96,7 +99,8 @@ class LabeledLineSentence(object):
         return self.sentences
     
     def sentences_perm(self):
-        return numpy.random.permutation(self.sentences)
+        random.shuffle(self.sentences)
+        return self.sentences
 ```
 
 Now we can feed the data files to `LabeledLineSentence`. As we mentioned earlier, `LabeledLineSentence` simply takes a dictionary with keys as the file names and values the special prefixes for sentences from that document. The prefixes need to be unique, so that there is no ambiguitiy for sentences from different documents.
