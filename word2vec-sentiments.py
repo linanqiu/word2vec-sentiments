@@ -64,6 +64,7 @@ model.build_vocab(sentences.to_array())
 
 log.info('Epoch')
 for epoch in range(10):
+	log.info('EPOCH: {}'.format(epoch))
     model.train(sentences.sentences_perm())
 
 log.info('Model Save')
