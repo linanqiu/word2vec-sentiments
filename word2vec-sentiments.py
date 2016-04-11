@@ -10,6 +10,18 @@ import numpy
 # classifier
 from sklearn.linear_model import LogisticRegression
 
+import logging
+import sys
+
+log = logging.getLogger()
+log.setLevel(logging.DEBUG)
+
+ch = logging.StreamHandler(sys.stdout)
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+ch.setFormatter(formatter)
+log.addHandler(ch)
+
 class TaggedLineSentence(object):
     def __init__(self, sources):
         self.sources = sources
@@ -40,13 +52,17 @@ class TaggedLineSentence(object):
     def sentences_perm(self):
         return numpy.random.permutation(self.sentences)
 
+log.info('source load')
 sources = {'test-neg.txt':'TEST_NEG', 'test-pos.txt':'TEST_POS', 'train-neg.txt':'TRAIN_NEG', 'train-pos.txt':'TRAIN_POS', 'train-unsup.txt':'TRAIN_UNS'}
+
+log.info('TaggedDocument')
 sentences = TaggedLineSentence(sources)
 
-
+log.info('D2V')
 model = Doc2Vec(min_count=1, window=10, size=100, sample=1e-4, negative=5, workers=7)
 model.build_vocab(sentences.to_array())
 
+log.info('Epoch')
 for epoch in range(10):
     model.train(sentences.sentences_perm())
 
