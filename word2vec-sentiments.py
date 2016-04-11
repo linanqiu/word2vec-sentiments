@@ -50,7 +50,8 @@ class TaggedLineSentence(object):
         return self.sentences
 
     def sentences_perm(self):
-        return numpy.random.permutation(self.sentences)
+        # return numpy.random.permutation(self.sentences)
+        
 
 log.info('source load')
 sources = {'test-neg.txt':'TEST_NEG', 'test-pos.txt':'TEST_POS', 'train-neg.txt':'TRAIN_NEG', 'train-pos.txt':'TRAIN_POS', 'train-unsup.txt':'TRAIN_UNS'}
@@ -65,7 +66,7 @@ model.build_vocab(sentences.to_array())
 log.info('Epoch')
 for epoch in range(10):
 	log.info('EPOCH: {}'.format(epoch))
-    model.train(sentences.sentences_perm())
+	model.train(sentences.sentences_perm())
 
 log.info('Model Save')
 model.save('./imdb.d2v')
