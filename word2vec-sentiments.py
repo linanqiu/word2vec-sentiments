@@ -66,9 +66,11 @@ log.info('Epoch')
 for epoch in range(10):
     model.train(sentences.sentences_perm())
 
+log.info('Model Save')
 model.save('./imdb.d2v')
 model = Doc2Vec.load('./imdb.d2v')
 
+log.info('Sentiment')
 train_arrays = numpy.zeros((25000, 100))
 train_labels = numpy.zeros(25000)
 
@@ -93,6 +95,7 @@ for i in range(12500):
     test_labels[i] = 1
     test_labels[12500 + i] = 0
 
+log.info('Fitting')
 classifier = LogisticRegression()
 classifier.fit(train_arrays, train_labels)
 
