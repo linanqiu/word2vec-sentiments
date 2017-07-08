@@ -64,6 +64,9 @@ model.build_vocab(sentences.to_array())
 
 for epoch in range(50):
     logger.info('Epoch %d' % epoch)
-    model.train(sentences.sentences_perm())
+    model.train(sentences.sentences_perm(),
+                total_examples=model.corpus_count,
+                epochs=model.iter,
+    )
 
 model.save('./imdb.d2v')
