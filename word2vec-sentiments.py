@@ -3,8 +3,8 @@ from gensim import utils
 from gensim.models.doc2vec import TaggedDocument
 from gensim.models import Doc2Vec
 
-# random shuffle
-from random import shuffle
+# random
+import random
 
 # numpy
 import numpy
@@ -16,10 +16,10 @@ import logging
 import sys
 
 log = logging.getLogger()
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.INFO)
 
 ch = logging.StreamHandler(sys.stdout)
-ch.setLevel(logging.DEBUG)
+ch.setLevel(logging.INFO)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 ch.setFormatter(formatter)
 log.addHandler(ch)
@@ -49,12 +49,13 @@ class TaggedLineSentence(object):
             with utils.smart_open(source) as fin:
                 for item_no, line in enumerate(fin):
                     self.sentences.append(TaggedDocument(utils.to_unicode(line).split(), [prefix + '_%s' % item_no]))
-        return self.sentences
+        return(self.sentences)
 
     def sentences_perm(self):
-        shuffle(self.sentences)
-	return self.sentences
-        
+        shuffled = list(self.sentences)
+        random.shuffle(shuffled)
+        return(shuffled)
+
 
 log.info('source load')
 sources = {'test-neg.txt':'TEST_NEG', 'test-pos.txt':'TEST_POS', 'train-neg.txt':'TRAIN_NEG', 'train-pos.txt':'TRAIN_POS', 'train-unsup.txt':'TRAIN_UNS'}
@@ -69,10 +70,7 @@ model.build_vocab(sentences.to_array())
 log.info('Epoch')
 for epoch in range(10):
 	log.info('EPOCH: {}'.format(epoch))
-	model.train(sentences.sentences_perm(),
-                    total_examples=model.corpus_count,
-                    epochs=model.iter,
-        )
+	model.train(sentences.sentences_perm())
 
 log.info('Model Save')
 model.save('./imdb.d2v')
@@ -90,7 +88,7 @@ for i in range(12500):
     train_labels[i] = 1
     train_labels[12500 + i] = 0
 
-print train_labels
+log.info(train_labels)
 
 test_arrays = numpy.zeros((25000, 100))
 test_labels = numpy.zeros(25000)
@@ -110,4 +108,4 @@ classifier.fit(train_arrays, train_labels)
 LogisticRegression(C=1.0, class_weight=None, dual=False, fit_intercept=True,
           intercept_scaling=1, penalty='l2', random_state=None, tol=0.0001)
 
-print classifier.score(test_arrays, test_labels)
+log.info(classifier.score(test_arrays, test_labels))
