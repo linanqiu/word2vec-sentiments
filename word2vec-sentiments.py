@@ -11,6 +11,7 @@ import numpy
 
 # classifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.svm import  LinearSVC
 
 import logging
 import sys
@@ -58,27 +59,34 @@ class TaggedLineSentence(object):
 
 
 log.info('source load')
-sources = {'test-neg.txt':'TEST_NEG', 'test-pos.txt':'TEST_POS', 'train-neg.txt':'TRAIN_NEG', 'train-pos.txt':'TRAIN_POS', 'train-unsup.txt':'TRAIN_UNS'}
+train_source = {'train-neg.txt':'TRAIN_NEG', 'train-pos.txt':'TRAIN_POS'}
+test_source = {'test-neg.txt':'TEST_NEG', 'test-pos.txt':'TEST_POS'}
 
 log.info('TaggedDocument')
-sentences = TaggedLineSentence(sources)
+train_sentences = TaggedLineSentence(train_source)
+test_sentences = TaggedLineSentence(test_source)
+
 
 log.info('D2V')
-model = Doc2Vec(min_count=1, window=10, size=100, sample=1e-4, negative=5, workers=7)
-model.build_vocab(sentences.to_array())
+model = Doc2Vec(min_count=1, window=10, size=150, sample=1e-4, negative=5, workers=7,iter=50)
+model.build_vocab(train_sentences.to_array())
 
 log.info('Epoch')
-for epoch in range(10):
-	log.info('EPOCH: {}'.format(epoch))
-	model.train(sentences.sentences_perm())
+
+# log.info('EPOCH: {}'.format(epoch))
+model.train(train_sentences.sentences_perm(),total_examples=model.corpus_count,epochs=model.iter)
 
 log.info('Model Save')
 model.save('./imdb.d2v')
 model = Doc2Vec.load('./imdb.d2v')
 
 log.info('Sentiment')
-train_arrays = numpy.zeros((25000, 100))
+train_arrays = numpy.zeros((25000, 150))
 train_labels = numpy.zeros(25000)
+
+
+
+print(model.most_similar('good'))
 
 for i in range(12500):
     prefix_train_pos = 'TRAIN_POS_' + str(i)
@@ -90,22 +98,26 @@ for i in range(12500):
 
 log.info(train_labels)
 
-test_arrays = numpy.zeros((25000, 100))
+test_arrays = numpy.zeros((25000, 150))
 test_labels = numpy.zeros(25000)
 
-for i in range(12500):
-    prefix_test_pos = 'TEST_POS_' + str(i)
-    prefix_test_neg = 'TEST_NEG_' + str(i)
-    test_arrays[i] = model.docvecs[prefix_test_pos]
-    test_arrays[12500 + i] = model.docvecs[prefix_test_neg]
-    test_labels[i] = 1
-    test_labels[12500 + i] = 0
+
+for index, i in enumerate(test_sentences):
+    # prefix_test_pos = 'TEST_POS_' + str(i)
+    # prefix_test_neg = 'TEST_NEG_' + str(i)
+    feature = model.infer_vector(i[0])
+    if index <12500:
+        test_arrays[index] = feature
+        test_labels[index] = 0
+    else:
+        test_arrays[index] = feature
+        test_labels[index] = 1
 
 log.info('Fitting')
-classifier = LogisticRegression()
+classifier = LinearSVC()
 classifier.fit(train_arrays, train_labels)
 
-LogisticRegression(C=1.0, class_weight=None, dual=False, fit_intercept=True,
-          intercept_scaling=1, penalty='l2', random_state=None, tol=0.0001)
+# LogisticRegression(C=1.0, class_weight=None, dual=False, fit_intercept=True,
+#           intercept_scaling=1, penalty='l2', random_state=None, tol=0.0001)
 
 log.info(classifier.score(test_arrays, test_labels))
